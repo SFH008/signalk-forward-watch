@@ -1,5 +1,7 @@
 const { exec } = require('child_process');
 
+const PLUGIN_ID = 'signalk-forward-watch';
+
 class SignalkOutput {
   constructor(app, options) {
     this.app = app;
@@ -9,77 +11,50 @@ class SignalkOutput {
   }
 
   sendDetections(detections) {
-    const validDetections = detections.filter(detection => 
-      detection.position && 
-      typeof detection.position.latitude === 'number' && 
-      typeof detection.position.longitude === 'number'
+    // Send all detections (with or without GPS position) to Signal K data stream
+    this.app.handleMessage(PLUGIN_ID, {
+      updates: [{
+        values: [{
+          path: 'environment.forwardWatch.detections',
+          value: detections
+        }]
+      }]
+    });
+
+    // Notifications only for detections that have GPS position and distance
+    const withPosition = detections.filter(d =>
+      d.position &&
+      typeof d.position.latitude === 'number' &&
+      typeof d.distance === 'number'
     );
 
-    if (validDetections.length > 0) {
-      // Send delta with all detections
-      this.app.handleMessage(this.app.selfContext, {
-        context: this.app.selfContext,
-        updates: [{
-          source: { type: 'PLUGIN', id: 'signalk-forward-watch' },
-          timestamp: new Date().toISOString(),
-          values: [
-            {
-              path: 'environment.forwardWatch.detections',
-              value: validDetections
-            }
-          ]
-        }]
-      });
-    }
-
-    // Process individual detections for notifications
-    for (const detection of validDetections) {
-      const { className, quadrant, distance, bearing, position } = detection;
-      if (!className || !quadrant || typeof distance !== 'number') continue;
-
-      const targetKey = `${className}-${quadrant}`;
+    for (const detection of withPosition) {
+      const { class_name, quadrant, distance, bearing } = detection;
+      const targetKey = `${class_name}-${quadrant}`;
       const now = Date.now();
 
-      // Check cooldown
       const lastAlert = this.lastAlertTime.get(targetKey) || 0;
-      if (now - lastAlert < (this.options.alert_cooldown * 1000)) {
-        continue;
-      }
-
-      // Update last alert time
+      if (now - lastAlert < (this.options.alert_cooldown || 30) * 1000) continue;
       this.lastAlertTime.set(targetKey, now);
 
-      // Determine severity based on distance
       let severity = 'normal';
-      if (distance <= 30) {
-        severity = 'emergency';
-      } else if (distance <= 75) {
-        severity = 'warn';
-      }
+      if (distance <= 30) severity = 'emergency';
+      else if (distance <= 75) severity = 'warn';
 
-      // Send notification
-      const notificationPath = `notifications.forwardWatch.${className}`;
-      
-      this.app.handleMessage(this.app.selfContext, {
-        context: this.app.selfContext,
+      this.app.handleMessage(PLUGIN_ID, {
         updates: [{
-          source: { type: 'PLUGIN', id: 'signalk-forward-watch' },
-          timestamp: new Date().toISOString(),
-          values: [
-            {
-              path: notificationPath,
-              value: {
-                state: 'alert',
-                severity: severity,
-                message: `${className} detected ${distance}m ahead at bearing ${bearing}`,
-                timestamp: new Date().toISOString()
-              }
+          values: [{
+            path: `notifications.forwardWatch.${class_name}`,
+            value: {
+              state: 'alert',
+              severity: severity,
+              message: `${class_name} detected ${distance}m ahead at bearing ${bearing}`,
+              timestamp: new Date().toISOString()
             }
-          ]
+          }]
         }]
       });
 
-      // Play audio alert if enabled and not already failed
       if (this.options.audio_alarm && !this.audioUnavailable) {
         this.playBeep();
       }
@@ -87,21 +62,11 @@ class SignalkOutput {
   }
 
   playBeep() {
-    let command;
-    
-    if (process.platform === 'win32') {
-      command = 'powershell [console]::beep';
-    } else if (process.platform === 'darwin') {
-      command = 'afplay /System/Library/Sounds/Ping.aiff';
-    } else {
-      // Linux/Unix - try paplay first, then aplay
-      command = 'which paplay > /dev/null 2>&1 && paplay /usr/share/sounds/alsa/Front_Left.wav || which aplay > /dev/null 2>&1 && aplay -q /usr/share/sounds/alsa/Front_Left.wav';
-    }
-
+    const command = 'which paplay > /dev/null 2>&1 && paplay /usr/share/sounds/alsa/Front_Left.wav || aplay -q /usr/share/sounds/alsa/Front_Left.wav';
     exec(command, (error) => {
       if (error) {
         this.audioUnavailable = true;
-        this.app.debug('Audio alert failed:', error.message);
+        this.app.debug('Audio alarm failed: ' + error.message);
       }
     });
   }

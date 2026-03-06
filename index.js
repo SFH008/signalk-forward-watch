@@ -38,7 +38,7 @@ module.exports = function(app) {
         detection_interval: {
           type: 'number',
           title: 'Detection interval in seconds',
-          default: 3,
+          default: 30,
           minimum: 1,
           maximum: 30
         },
@@ -93,13 +93,15 @@ module.exports = function(app) {
       this.rtspUrl = rtspUrl;
       app.debug(`Starting detection loop every ${options.detection_interval}s`);
 
+      this.running = false;
       this.interval = setInterval(async () => {
+        if (this.running) return; // skip if previous inference still in progress
+        this.running = true;
         try {
           const framePath = await this.grabber.grabFrame(this.rtspUrl);
           if (!framePath) return;
 
-          const detections = await this.detector.detect(framePath, options.confidence_threshold || 0.4);
-          if (!detections || detections.length === 0) return;
+          const detections = await this.detector.detect(framePath, options.confidence_threshold || 0.4) || [];
 
           // Get boat position from Signal K
           const boatLat = app.getSelfPath('navigation.position.value.latitude') || null;
@@ -120,8 +122,10 @@ module.exports = function(app) {
           this.skOutput.sendDetections(enriched);
         } catch (err) {
           app.debug('Detection loop error: ' + err.message);
+        } finally {
+          this.running = false;
         }
-      }, (options.detection_interval || 3) * 1000);
+      }, (options.detection_interval || 30) * 1000);
     },
 
     stop: function() {
