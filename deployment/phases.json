@@ -1,0 +1,51 @@
+[
+  {
+    "phase": "package-json",
+    "description": "Create package.json — Signal K plugin descriptor and npm package definition",
+    "target_file": "package.json",
+    "action": "CREATE",
+    "spec": "Create package.json for a Signal K server plugin named 'signalk-forward-watch'. It must include: name='signalk-forward-watch', version='0.1.0', description='AI-powered forward watch obstacle detection for Signal K — detects boats, kayaks, buoys, logs, debris, docks and people using a bow-mounted IP camera', keywords=['signalk','signalk-node-server-plugin','marine','safety','obstacle-detection','yolov8','forward-watch'], author='SkipperDon', license='Apache-2.0', main='index.js', signalk-plugin object with id='signalk-forward-watch' and name='Forward Watch'. Dependencies: onnxruntime-node@^1.17.0, node-onvif@^0.2.0, fluent-ffmpeg@^2.1.3, geodesy@^2.4.0. devDependencies: none needed. engines: node>=18."
+  },
+  {
+    "phase": "index-js",
+    "description": "Create index.js — main plugin entry point with Signal K lifecycle, config schema, and wiring",
+    "target_file": "index.js",
+    "action": "CREATE",
+    "spec": "Create index.js for the signalk-forward-watch Signal K plugin. The plugin must: (1) Export a function(app) that returns an object with id, name, description, schema, start(options), and stop() methods. (2) Schema defines these user config fields: camera_ip (string, 'Camera IP Address'), camera_user (string, 'Camera Username', default 'admin'), camera_pass (string, 'Camera Password'), rtsp_url (string, 'RTSP URL — auto-filled or enter manually'), detection_interval (number, 'Detection interval in seconds', default 3, min 1, max 30), alert_cooldown (number, 'Seconds before re-alerting same target', default 30), audio_alarm (boolean, 'Enable audio alarm', default false), confidence_threshold (number, 'Minimum detection confidence 0-1', default 0.4). (3) start(options) initialises CameraDiscovery, RtspGrabber, Detector, GpsCalculator, and SignalkOutput modules from ./plugin/. Calls discovery.scan() to populate rtsp_url if not set. Starts the grab-detect loop on a setInterval using options.detection_interval. (4) stop() clears the interval and stops the grabber. (5) Log all startup steps using app.debug(). Use Node.js require(), no ES modules."
+  },
+  {
+    "phase": "camera-discovery",
+    "description": "Create plugin/camera-discovery.js — ONVIF network scan returning camera list for the config picklist",
+    "target_file": "plugin/camera-discovery.js",
+    "action": "CREATE",
+    "spec": "Create plugin/camera-discovery.js using node-onvif. Export a class CameraDiscovery with: constructor(app) storing app for logging. async scan() method that calls onvif.startProbe() with 5 second timeout, collects discovered devices, for each device retrieves device info (name, ip) and media profiles to extract the first RTSP stream URL, returns array of objects {ip, name, rtsp_url}. If scan finds nothing or throws, return empty array (non-fatal). async buildRtspUrl(ip, user, pass) method that constructs a standard RTSP URL rtsp://user:pass@ip:554/stream1 as fallback when ONVIF not available. All errors caught and logged via app.debug(), never thrown. Use require('node-onvif')."
+  },
+  {
+    "phase": "rtsp-grabber",
+    "description": "Create plugin/rtsp-grabber.js — captures a single JPEG frame from the RTSP stream",
+    "target_file": "plugin/rtsp-grabber.js",
+    "action": "CREATE",
+    "spec": "Create plugin/rtsp-grabber.js using fluent-ffmpeg. Export a class RtspGrabber with: constructor(app) storing app. async grabFrame(rtspUrl) method that uses ffmpeg to capture exactly 1 frame from rtspUrl, saves it to a temp file at /tmp/fw-frame.jpg using args: -rtsp_transport tcp, -vframes 1, -q:v 2, timeout 10 seconds. Returns the file path /tmp/fw-frame.jpg on success. If ffmpeg errors or times out, logs the error via app.debug() and returns null. stop() method that kills any running ffmpeg process. Use require('fluent-ffmpeg') and require('fs')."
+  },
+  {
+    "phase": "detector",
+    "description": "Create plugin/detector.js — runs YOLOv8n ONNX inference on a JPEG frame",
+    "target_file": "plugin/detector.js",
+    "action": "CREATE",
+    "spec": "Create plugin/detector.js using onnxruntime-node. Export a class Detector with: constructor(app, modelPath) storing app and modelPath. async init() method that loads the ONNX model using ort.InferenceSession.create(modelPath). async detect(imagePath, confidenceThreshold) method that: reads the JPEG from imagePath using fs, decodes it to a 640x640 RGB float32 tensor normalized to 0-1 (simple bilinear resize), runs the ONNX session, parses YOLOv8 output format (1x6xN boxes: cx,cy,w,h,confidence,class_id), filters by confidenceThreshold, applies non-max suppression (IoU 0.45), returns array of {class_id, class_name, confidence, cx, cy, w, h} where class_name comes from CLASS_NAMES = ['ship','boat','debris','buoy','kayak','log']. If model not loaded or image missing, returns empty array. Use require('onnxruntime-node'), require('fs'), require('path')."
+  },
+  {
+    "phase": "gps-calculator",
+    "description": "Create plugin/gps-calculator.js — converts detection bounding box position to GPS coordinates",
+    "target_file": "plugin/gps-calculator.js",
+    "action": "CREATE",
+    "spec": "Create plugin/gps-calculator.js. Export a class GpsCalculator with: constructor(app) storing app. calculate(detection, boatLat, boatLon, boatHeading) method that: estimates distance in metres from bounding box height (larger box = closer) using formula distance = 5000 * detection.h where h is fraction of image height (rough monocular estimate, e.g. h=1.0 means ~5m, h=0.1 means ~50m, clamped 2-500m), calculates bearing as boatHeading + ((detection.cx - 0.5) * 60) degrees (60 degree camera FOV assumption), uses the geodesy haversine formula to compute destination lat/lon from boatLat/boatLon + bearing + distance, returns {lat, lon, distance_m, bearing_deg, class_name, confidence}. If boatLat or boatLon are null, returns null. Use require('geodesy/latlon-spherical.js')."
+  },
+  {
+    "phase": "signalk-output",
+    "description": "Create plugin/signalk-output.js — sends detections to Signal K as delta messages and notifications",
+    "target_file": "plugin/signalk-output.js",
+    "action": "CREATE",
+    "spec": "Create plugin/signalk-output.js. Export a class SignalkOutput with: constructor(app, options) storing app and options (audio_alarm, alert_cooldown). sendDetections(detections) method that: for each detection with a valid GPS position, sends a Signal K delta via app.handleMessage() with path 'environment.forwardWatch.detections' containing the detection array as JSON, for detections within 100m sends a Signal K notification via app.handleMessage() with path 'notifications.forwardWatch.[class_name]' with severity based on distance (<=30m: emergency, <=75m: warn, else: normal) and message '[CLASS] detected [distance]m ahead at bearing [bearing]', tracks last alert time per target key (class_name+quadrant) using a Map and skips re-alerting within options.alert_cooldown seconds, if audio_alarm is true and platform has audio attempts to play a system beep using a child_process exec of a cross-platform beep command (on linux: paplay/aplay, on windows: powershell [console]::beep), if audio fails logs warning and sets a flag audioUnavailable=true and does not retry. Use require('child_process')."
+  }
+]

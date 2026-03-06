@@ -1,0 +1,32 @@
+{
+  "name": "signalk-forward-watch",
+  "version": "0.1.0",
+  "description": "AI-powered forward watch obstacle detection for Signal K — detects boats, kayaks, buoys, logs, debris, docks and people using a bow-mounted IP camera",
+  "keywords": [
+    "signalk",
+    "signalk-node-server-plugin",
+    "marine",
+    "safety",
+    "obstacle-detection",
+    "yolov8",
+    "forward-watch"
+  ],
+  "author": "SkipperDon",
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "signalk-plugin": {
+    "id": "signalk-forward-watch",
+    "name": "Forward Watch"
+  },
+  "dependencies": {
+    "onnxruntime-node": "^1.17.0",
+    "node-onvif": "^0.2.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "geodesy": "^2.4.0",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}
