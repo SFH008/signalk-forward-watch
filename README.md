@@ -56,6 +56,30 @@ Restart Signal K and enable the plugin in **Admin → Plugin Config → Forward 
 | **Alert cooldown (seconds)** | `30` | Minimum time between repeat alerts for the same target type and quadrant. Prevents alarm flooding. |
 | **Enable audio alarm** | `false` | Plays a system beep on detection within 100m. Requires audio output on the host. |
 | **Confidence threshold** | `0.4` | Minimum detection confidence (0–1). Lower = more detections but more false positives. 0.4 is a good starting point. |
+| **Show detections in OpenCPN** | `true` | Sends detections to OpenCPN as AIS targets on the chart. Requires boat GPS. |
+
+---
+
+## OpenCPN Integration
+
+When **Show detections in OpenCPN** is enabled, each detected object is written into Signal K as a vessel with a dedicated fake MMSI. OpenCPN reads these from Signal K and displays them as AIS targets directly on your chart.
+
+| Detection | Chart label | MMSI |
+|-----------|-------------|------|
+| ship | FW-SHIP (confidence%) | 800000001 |
+| boat | FW-BOAT (confidence%) | 800000002 |
+| debris | FW-DEBRIS (confidence%) | 800000003 |
+| buoy | FW-BUOY (confidence%) | 800000004 |
+| kayak | FW-KAYAK (confidence%) | 800000005 |
+| log | FW-LOG (confidence%) | 800000006 |
+
+Each class uses a fixed MMSI so the same target updates in place on the chart rather than spawning new ones on every detection cycle.
+
+**OpenPlotter users:** No configuration needed. Signal K and OpenCPN are already connected — detections appear on the chart automatically.
+
+**Other setups:** OpenCPN must have an active Signal K data connection (Admin → Connections → Signal K). If you can already see your boat's GPS position in OpenCPN via Signal K, detections will appear automatically.
+
+> **Note:** OpenCPN targets only appear when your boat has GPS active in Signal K. Without a GPS position, the plugin cannot calculate where the detected object is, so nothing is sent to the chart.
 
 ---
 
