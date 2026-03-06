@@ -17,12 +17,30 @@ AI-powered forward watch obstacle detection for Signal K. Monitors a bow-mounted
 
 ## Installation
 
+**Step 1 — Install the plugin**
 ```bash
 cd ~/.signalk
 npm install signalk-forward-watch
 ```
 
-Then restart Signal K and enable the plugin in **Admin → Plugin Config → Forward Watch**.
+**Step 2 — Download the detection model**
+
+The YOLOv8 marine model is hosted on GitHub Releases (12MB — too large to bundle in the npm package).
+
+```bash
+mkdir -p ~/.signalk/node_modules/signalk-forward-watch/models
+wget -O ~/.signalk/node_modules/signalk-forward-watch/models/forward-watch.onnx \
+  https://github.com/SkipperDon/signalk-forward-watch/releases/download/v0.1.0/forward-watch.onnx
+```
+
+Or download it manually from the [Releases page](https://github.com/SkipperDon/signalk-forward-watch/releases) and place it at:
+```
+~/.signalk/node_modules/signalk-forward-watch/models/forward-watch.onnx
+```
+
+**Step 3 — Enable the plugin**
+
+Restart Signal K and enable the plugin in **Admin → Plugin Config → Forward Watch**.
 
 ---
 
