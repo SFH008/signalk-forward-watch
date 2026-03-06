@@ -60,9 +60,9 @@ Restart Signal K and enable the plugin in **Admin → Plugin Config → Forward 
 
 ---
 
-## OpenCPN Integration
+## Chart Plotter Integration
 
-When **Show detections in OpenCPN** is enabled, each detected object is written into Signal K as a vessel with a dedicated fake MMSI. OpenCPN reads these from Signal K and displays them as AIS targets directly on your chart.
+When **Show detections in OpenCPN** is enabled, each detected object is written into Signal K as a vessel with a dedicated fake MMSI. Chart plotters that can read Signal K or NMEA 0183 AIS data will display them as AIS targets.
 
 | Detection | Chart label | MMSI |
 |-----------|-------------|------|
@@ -75,11 +75,23 @@ When **Show detections in OpenCPN** is enabled, each detected object is written 
 
 Each class uses a fixed MMSI so the same target updates in place on the chart rather than spawning new ones on every detection cycle.
 
+### OpenCPN (Signal K connection)
+
 **OpenPlotter users:** No configuration needed. Signal K and OpenCPN are already connected — detections appear on the chart automatically.
 
 **Other setups:** OpenCPN must have an active Signal K data connection (Admin → Connections → Signal K). If you can already see your boat's GPS position in OpenCPN via Signal K, detections will appear automatically.
 
-> **Note:** OpenCPN targets only appear when your boat has GPS active in Signal K. Without a GPS position, the plugin cannot calculate where the detected object is, so nothing is sent to the chart.
+### Standalone chart plotters — Garmin, Raymarine, B&G, Furuno, Navionics
+
+Standalone MFDs and chart plotter apps do not connect to Signal K directly. To see forward-watch detections on these devices, install the **`@signalk/signalk-to-nmea0183`** plugin on your Signal K server.
+
+**Prerequisite:** [`@signalk/signalk-to-nmea0183`](https://www.npmjs.com/package/@signalk/signalk-to-nmea0183)
+
+Install it from the Signal K AppStore (Admin → AppStore → search "nmea0183"), then enable it. It converts all Signal K vessel data — including the fake AIS vessels written by forward-watch — into NMEA 0183 `!AIVDM` sentences and broadcasts them on a configurable TCP/UDP port or serial output.
+
+Configure your chart plotter to receive NMEA 0183 from the Signal K server's IP address and port (default 10110). Once connected, forward-watch detections will appear as AIS targets labelled FW-SHIP, FW-BOAT, etc.
+
+> **Note:** Targets only appear when your boat has GPS active in Signal K. Without a GPS position, the plugin cannot calculate where the detected object is, so nothing is sent to the chart.
 
 ---
 
