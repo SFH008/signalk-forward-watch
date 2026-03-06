@@ -4,6 +4,7 @@ const RtspGrabber = require('./plugin/rtsp-grabber');
 const Detector = require('./plugin/detector');
 const GpsCalculator = require('./plugin/gps-calculator');
 const SignalkOutput = require('./plugin/signalk-output');
+const OpenCPNOutput = require('./plugin/opencpn-output');
 
 const MODEL_PATH = path.join(__dirname, 'models', 'forward-watch.onnx');
 
@@ -58,6 +59,11 @@ module.exports = function(app) {
           default: 0.4,
           minimum: 0,
           maximum: 1
+        },
+        opencpn_enabled: {
+          type: 'boolean',
+          title: 'Show detections in OpenCPN',
+          default: true
         }
       },
       required: ['camera_ip', 'camera_user', 'camera_pass']
@@ -71,6 +77,7 @@ module.exports = function(app) {
       this.detector = new Detector(app, MODEL_PATH);
       this.gpsCalc = new GpsCalculator(app);
       this.skOutput = new SignalkOutput(app, options);
+      this.ocpnOutput = new OpenCPNOutput(app);
 
       // Load ONNX model
       await this.detector.init();
@@ -120,6 +127,7 @@ module.exports = function(app) {
           });
 
           this.skOutput.sendDetections(enriched);
+          if (options.opencpn_enabled !== false) this.ocpnOutput.sendDetections(enriched);
         } catch (err) {
           app.debug('Detection loop error: ' + err.message);
         } finally {
