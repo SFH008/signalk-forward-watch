@@ -8,7 +8,8 @@ AI-powered forward watch obstacle detection for Signal K. Monitors a bow-mounted
 
 ## Requirements
 
-- Signal K server (Node.js ≥ 18)
+- Signal K server **v2.22.1 or later** recommended (Node.js ≥ 18)
+  - Earlier Signal K versions have an unrelated AIS TCP provider memory leak that causes server instability when AIS is active alongside this plugin
 - A bow-mounted IP camera with RTSP stream (ONVIF cameras auto-discovered)
 - ffmpeg installed on the host (`sudo apt install ffmpeg`)
 - Raspberry Pi 4 or better (CPU inference, no GPU required)
@@ -200,9 +201,11 @@ A Signal K notification is sent for any detection **within 100m**. One notificat
 
 | Hardware | Inference time | Recommended interval |
 |----------|---------------|----------------------|
-| Raspberry Pi 4 (4GB) | ~1.6s | 30s |
-| Raspberry Pi 5 | ~0.6s (estimated) | 10s |
-| x86 CPU (modern) | ~0.3s | 5s |
+| Raspberry Pi 4 (4GB) | ~1.6s | 300s (v0.1.x) · 60s (v0.2.0+) |
+| Raspberry Pi 5 | ~0.6s (estimated) | 60s |
+| x86 CPU (modern) | ~0.3s | 10s |
+
+> **v0.1.x note:** ONNX inference runs on the Signal K event loop thread. At short intervals this can cause GPS, AIS, and engine data to freeze during inference. The default interval of 300s avoids this. v0.2.0 moves inference to a worker thread — GPS/AIS/engine data will remain live at any detection interval.
 
 ---
 

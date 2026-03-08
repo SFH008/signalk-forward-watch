@@ -2,6 +2,11 @@
 
 ---
 
+## v0.1.1 — Released (hotfix)
+- Fixed: `detection_interval` schema had `maximum: 30` — users could not set the 300s workaround from the UI
+- Default interval changed to 300s (avoids event loop blocking on Pi 4 until v0.2.0)
+- README: Signal K v2.22.1+ recommended (earlier versions have unrelated AIS TCP memory leak)
+
 ## v0.1.0 — Released
 - Custom YOLOv8n marine model (21,719 training images, 100 epochs)
 - 6 detection classes: ship, boat, debris, buoy, kayak, log
@@ -11,9 +16,9 @@
 - Published on GitHub Releases
 
 **Known issue in v0.1.0:** ONNX inference runs on the Signal K main event loop thread.
-Inference takes ~2 minutes on Pi 4 CPU. At short intervals this blocks Signal K entirely
-(GPS, AIS, engine data freeze). Workaround: raise `detection_interval` to 300s in plugin
-config.
+Inference takes ~1.6s on Pi 4. At the default 30s interval this causes GPS, AIS, and engine
+data to freeze during each detection cycle. `maximum: 30` in the schema also prevented users
+from raising the interval as a workaround. Fixed in v0.1.1.
 
 ---
 

@@ -39,9 +39,9 @@ module.exports = function(app) {
         detection_interval: {
           type: 'number',
           title: 'Detection interval in seconds',
-          default: 30,
-          minimum: 1,
-          maximum: 30
+          default: 300,
+          minimum: 10,
+          maximum: 600
         },
         alert_cooldown: {
           type: 'number',
@@ -133,7 +133,7 @@ module.exports = function(app) {
         } finally {
           this.running = false;
         }
-      }, (options.detection_interval || 30) * 1000);
+      }, (options.detection_interval || 300) * 1000);
     },
 
     stop: function() {
