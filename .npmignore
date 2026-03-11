@@ -1,0 +1,18 @@
+# Never publish tokens or secrets
+.npmtoken
+.npmtoken.txt
+*.token
+.env
+*.key
+*.pem
+
+# Dev/deployment files
+deployment/
+best.pt
+last.pt
+*.pt
+*Zone.Identifier
+
+# Git
+.git/
+.gitignore
